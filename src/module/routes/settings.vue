@@ -354,16 +354,13 @@ async function deleteAllBackups() {
 
 onMounted(async () => {
 	try {
-		const { data } = await api.get('/users/me', { params: { fields: ['role.admin_access'] } });
-		if (!data.data?.role?.admin_access) {
+		await api.get(`${BASE}/status`);
+	} catch (err) {
+		if (err.response?.status === 403) {
 			accessDenied.value = true;
 			loading.value = false;
 			return;
 		}
-	} catch {
-		accessDenied.value = true;
-		loading.value = false;
-		return;
 	}
 
 	fetchData();
