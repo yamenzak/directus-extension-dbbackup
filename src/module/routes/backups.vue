@@ -288,7 +288,6 @@ const selectedBackup = ref(null);
 const selectedFile = ref(null);
 
 const pgWarning = ref(false);
-const backupFolderId = ref(null);
 
 const formattedBackups = computed(() => {
 	const sorted = [...backups.value];
@@ -481,11 +480,13 @@ async function uploadBackup() {
 	clearMessages();
 	uploading.value = true;
 	try {
-		const formData = new FormData();
-		formData.append('file', selectedFile.value);
-		if (uploadLabel.value) formData.append('title', uploadLabel.value);
-		formData.append('folder', await getBackupFolderId());
-		await api.post('/files', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+		const buffer = await selectedFile.value.arrayBuffer();
+		await api.post(`${BASE}/upload`, buffer, {
+			headers: {
+				'Content-Type': 'application/octet-stream',
+				'x-backup-label': uploadLabel.value || 'Uploaded backup',
+			},
+		});
 		showUploadDialog.value = false;
 		selectedFile.value = null;
 		uploadLabel.value = '';
@@ -496,20 +497,6 @@ async function uploadBackup() {
 	} finally {
 		uploading.value = false;
 	}
-}
-
-async function getBackupFolderId() {
-	if (backupFolderId.value) return backupFolderId.value;
-	const { data } = await api.get('/folders', {
-		params: { filter: { name: { _eq: 'DB Backups' } }, limit: 1 },
-	});
-	if (data.data?.length > 0) {
-		backupFolderId.value = data.data[0].id;
-		return backupFolderId.value;
-	}
-	const { data: created } = await api.post('/folders', { name: 'DB Backups' });
-	backupFolderId.value = created.data.id;
-	return backupFolderId.value;
 }
 
 async function syncFromStorage() {

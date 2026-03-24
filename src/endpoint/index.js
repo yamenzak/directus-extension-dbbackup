@@ -4,7 +4,8 @@ import { ensureBackupFolder } from '../shared/folder.js';
 import { readSettings, writeSettings } from '../shared/settings.js';
 import { checkPgTools, runPgRestore } from '../shared/pg.js';
 import { syncBackups } from '../shared/sync.js';
-import { getFileStream, deleteFromStorage } from '../shared/storage.js';
+import { getFileStream, deleteFromStorage, uploadBackupToStorage } from '../shared/storage.js';
+import { randomUUID } from 'crypto';
 
 export default defineEndpoint({
 	id: 'dbbackup',
@@ -196,6 +197,60 @@ export default defineEndpoint({
 					},
 				});
 			} catch (err) {
+				res.status(500).json({ errors: [{ message: err.message }] });
+			}
+		});
+
+		router.post('/upload', async (req, res) => {
+			if (!requireAdmin(req, res)) return;
+
+			try {
+				const chunks = [];
+				for await (const chunk of req) {
+					chunks.push(chunk);
+				}
+				const buffer = Buffer.concat(chunks);
+
+				if (buffer.length === 0) {
+					return res.status(400).json({ errors: [{ message: 'No file data received' }] });
+				}
+
+				const schema = await getSchema();
+				const { foldersService } = adminServices(schema);
+				const folderId = await ensureBackupFolder(foldersService);
+
+				const label = req.headers['x-backup-label'] || 'Uploaded backup';
+				const sanitized = (label || 'Uploaded-backup')
+					.replace(/[^a-zA-Z0-9 _-]/g, '')
+					.replace(/\s+/g, '-')
+					.slice(0, 60);
+
+				const now = new Date();
+				const ts = now.toISOString().replace(/[:.]/g, '-').slice(0, 19);
+				const filename = `backup_${ts}_${sanitized}.dump`;
+
+				const storageLocation = env.STORAGE_LOCATIONS
+					? env.STORAGE_LOCATIONS.split(',')[0].trim()
+					: 'local';
+
+				const filenameDisk = await uploadBackupToStorage(buffer, filename, env);
+				const fileId = randomUUID();
+
+				await database('directus_files').insert({
+					id: fileId,
+					filename_disk: filenameDisk,
+					filename_download: filename,
+					title: label,
+					type: 'application/octet-stream',
+					folder: folderId,
+					storage: storageLocation,
+					filesize: buffer.length,
+					uploaded_on: now.toISOString(),
+				});
+
+				res.json({ success: true, file_id: fileId });
+			} catch (err) {
+				logger.error(`[dbbackup] Upload failed: ${err.message}`);
 				res.status(500).json({ errors: [{ message: err.message }] });
 			}
 		});
