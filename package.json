@@ -1,6 +1,6 @@
 {
   "name": "directus-extension-dbbackup",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Back up and restore your PostgreSQL database with one click, with S3 and local storage support",
   "icon": "backup",
   "keywords": [
