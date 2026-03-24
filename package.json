@@ -1,0 +1,63 @@
+{
+  "name": "directus-extension-dbbackup",
+  "version": "1.0.0",
+  "description": "Back up and restore your PostgreSQL database with one click, with S3 and local storage support",
+  "icon": "backup",
+  "keywords": [
+    "directus-extension",
+    "directus",
+    "backup",
+    "restore",
+    "postgresql",
+    "s3",
+    "database"
+  ],
+  "license": "MIT",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
+  "directus:extension": {
+    "host": "^11.0.0",
+    "type": "bundle",
+    "path": {
+      "app": "./dist/app.js",
+      "api": "./dist/api.js"
+    },
+    "entries": [
+      {
+        "type": "endpoint",
+        "name": "dbbackup-api",
+        "source": "./src/endpoint/index.js"
+      },
+      {
+        "type": "hook",
+        "name": "dbbackup-scheduler",
+        "source": "./src/hook/index.js"
+      },
+      {
+        "type": "module",
+        "name": "dbbackup-module",
+        "source": "./src/module/index.js"
+      }
+    ]
+  },
+  "devDependencies": {
+    "@directus/extensions-sdk": "^13.0.0",
+    "vue": "^3.5.0"
+  },
+  "scripts": {
+    "build": "npx directus-extension build",
+    "dev": "npx directus-extension build -w --no-minify"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1015.0"
+  },
+  "files": [
+    "dist",
+    "package.json",
+    "README.md",
+    "LICENSE"
+  ]
+}
